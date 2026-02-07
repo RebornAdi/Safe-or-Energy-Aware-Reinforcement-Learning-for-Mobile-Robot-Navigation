@@ -1,0 +1,10 @@
+1) A reinforcement-learning approach to robot navigation
+2) A Survey of Safe Reinforcement Learning And Constrained MDPs
+3) An energy aware Q-learning framework for comprehensive coverage path planning in unknown complex environments
+4) CAAI Trans on Intel Tech - 2023 - Zhou - A safe reinforcement learning approach for autonomous navigation of mobile robots
+5) Deep Reinforcement Learning with Enhanced PPO
+6) Energy-Aware Hierarchical Reinforcement Learning Based on the Predictive Energy Consumption Algorithm for Search and Rescue Aerial Robots in Unknown Environments    
+7) Reinforcement Learning-Based Energy-Saving Path Planning for UAVs in Turbulent Wind
+8) Safe Reinforcement Learning of Dynamic High-Dimensional
+9) SafeExplorationinModel-basedReinforcementLearning
+10) State-wise Safe Reinforcement Learning A Survey

@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class SafeEnergyNavEnv(gym.Env):
-    metadata = {"render_modes": ["human"]}
+    metadata = {"render_modes": ["human"], "render_fps": 30}
 
     def __init__(self, use_safety=True, use_energy=True, render_mode=None):
         super().__init__()
@@ -13,71 +13,107 @@ class SafeEnergyNavEnv(gym.Env):
         self.use_energy = use_energy
         self.render_mode = render_mode
 
-        self.action_space = spaces.Box(low=-1.0,high=1.0,shape=(2,),dtype=np.float32)
-
-
-        self.observation_space = spaces.Box(
-            low=np.array([0.0, -np.pi, 0.0, 0.0, -1.0]),
-            high=np.array([15.0, np.pi, 15.0, 1.0, 1.0]),
-            dtype=np.float32
-        )
-
         self.world_size = 10.0
         self.dt = 0.1
         self.max_steps = 300
 
-        self.safe_distance = 0.6
-        self.collision_distance = 0.25
+        self.max_v = 1.0
+        self.max_omega = 1.0
+
+        self.safe_distance = 0.8
+        self.collision_distance = 0.3
+
+        self.action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(2,),
+            dtype=np.float32
+        )
+
+        self.observation_space = spaces.Box(
+            low=np.array([0.0, -1.0, -1.0, 0.0, 0.0, -1.0]),
+            high=np.array([15.0, 1.0, 1.0, 15.0, 1.0, 1.0]),
+            dtype=np.float32
+        )
 
         self.fig = None
         self.ax = None
 
-        self.reset()
-
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
-        self.position = np.array([1.0, 1.0], dtype=np.float32)
-        self.heading = 0.0
+        self.goal = self._random_pos()
+        self.obstacle = self._random_pos()
+
+        while np.linalg.norm(self.goal - self.obstacle) < 1.5:
+            self.obstacle = self._random_pos()
+
+        self.position = self._random_pos()
+        while (
+            np.linalg.norm(self.position - self.obstacle) < 1.0 or
+            np.linalg.norm(self.position - self.goal) < 1.0
+        ):
+            self.position = self._random_pos()
+
+        self.heading = self.np_random.uniform(-np.pi, np.pi)
         self.v = 0.0
         self.omega = 0.0
-
-        self.goal = np.array([8.5, 8.5], dtype=np.float32)
-        self.obstacle = np.array([4.5, 4.5], dtype=np.float32)
-
         self.steps = 0
+
         return self._get_obs(), {}
+
+    def _random_pos(self):
+        return self.np_random.uniform(1.0, self.world_size - 1.0, size=(2,)).astype(np.float32)
 
     def step(self, action):
         self.steps += 1
 
-        self.v = float(np.clip(action[0], 0.0, 1.0))
-        self.omega = float(np.clip(action[1], -1.0, 1.0))
+        self.v = ((action[0] + 1.0) / 2.0) * self.max_v
+        self.omega = action[1] * self.max_omega
+
+        prev_position = self.position.copy()
 
         self.heading += self.omega * self.dt
+        self.heading = (self.heading + np.pi) % (2*np.pi) - np.pi
+
         dx = self.v * np.cos(self.heading) * self.dt
         dy = self.v * np.sin(self.heading) * self.dt
+
         self.position += np.array([dx, dy])
+        self.position = np.clip(self.position, 0, self.world_size)
 
         dist_goal = np.linalg.norm(self.goal - self.position)
+        prev_dist_goal = np.linalg.norm(self.goal - prev_position)
         dist_obs = np.linalg.norm(self.obstacle - self.position)
 
-        reward = -dist_goal
+        reward = 0.0
 
+        # Progress shaping
+        reward += 5.0 * (prev_dist_goal - dist_goal)
+
+        # Small time penalty
+        reward -= 0.01
+
+        # Safety penalty
         if self.use_safety:
             if dist_obs < self.collision_distance:
-                reward -= 50.0
+                reward -= 100.0
             elif dist_obs < self.safe_distance:
-                reward -= 5.0 * (self.safe_distance - dist_obs)
+                penalty_factor = (
+                    (self.safe_distance - dist_obs) /
+                    (self.safe_distance - self.collision_distance)
+                )
+                reward -= 10.0 * penalty_factor
 
+        # Energy penalty
         if self.use_energy:
-            reward -= 0.5 * (self.v ** 2 + self.omega ** 2)
+            reward -= 0.02 * (self.v**2 + 0.3 * self.omega**2)
 
         terminated = False
         truncated = False
 
         if dist_goal < 0.3:
-            reward += 100.0
+            reward += 200.0
             terminated = True
 
         if dist_obs < self.collision_distance:
@@ -86,54 +122,64 @@ class SafeEnergyNavEnv(gym.Env):
         if self.steps >= self.max_steps:
             truncated = True
 
-        if self.render_mode == "human":
-            self.render()
-
         return self._get_obs(), float(reward), terminated, truncated, {}
 
     def _get_obs(self):
         vec_goal = self.goal - self.position
         heading_goal = np.arctan2(vec_goal[1], vec_goal[0])
+
         heading_error = heading_goal - self.heading
+        heading_error = (heading_error + np.pi) % (2*np.pi) - np.pi
 
         return np.array([
             np.linalg.norm(vec_goal),
-            heading_error,
+            np.cos(heading_error),
+            np.sin(heading_error),
             np.linalg.norm(self.obstacle - self.position),
             self.v,
             self.omega
         ], dtype=np.float32)
-
+    # ================= RENDER =================
     def render(self):
+
+        if self.render_mode != "human":
+            return
+
         if self.fig is None:
             plt.ion()
-            self.fig, self.ax = plt.subplots(figsize=(6, 6))
+            self.fig, self.ax = plt.subplots(figsize=(6,6))
 
         self.ax.clear()
         self.ax.set_xlim(0, self.world_size)
         self.ax.set_ylim(0, self.world_size)
 
-        self.ax.plot(self.position[0], self.position[1], "bo", label="Robot")
+        # robot
+        self.ax.plot(self.position[0], self.position[1], "bo")
 
-        hx = self.position[0] + 0.5 * np.cos(self.heading)
-        hy = self.position[1] + 0.5 * np.sin(self.heading)
-        self.ax.plot([self.position[0], hx], [self.position[1], hy], "b-")
+        hx = self.position[0] + 0.5*np.cos(self.heading)
+        hy = self.position[1] + 0.5*np.sin(self.heading)
+        self.ax.plot([self.position[0], hx],
+                    [self.position[1], hy], "b-")
 
-        self.ax.plot(self.goal[0], self.goal[1], "g*", markersize=15, label="Goal")
+        # goal
+        self.ax.plot(self.goal[0], self.goal[1], "g*", markersize=15)
 
+        # obstacle
         obs = plt.Circle(self.obstacle, self.collision_distance, color="r")
         self.ax.add_patch(obs)
 
         safe = plt.Circle(
-            self.obstacle, self.safe_distance,
-            color="r", linestyle="--", fill=False
+            self.obstacle,
+            self.safe_distance,
+            color="r",
+            linestyle="--",
+            fill=False
         )
         self.ax.add_patch(safe)
 
-        self.ax.set_title("Safe & Energy-Aware RL Navigation")
-        self.ax.legend()
-        plt.pause(0.001)
+        self.ax.set_title(f"Steps: {self.steps}")
 
+        plt.pause(0.001)
     def close(self):
         if self.fig:
             plt.close(self.fig)

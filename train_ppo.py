@@ -1,36 +1,68 @@
 import torch
+import wandb
+from wandb.integration.sb3 import WandbCallback
 from stable_baselines3 import PPO
-from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
 from safe_energy_nav_env import SafeEnergyNavEnv
 
-print("Torch version:", torch.__version__)
-print("CUDA available:", torch.cuda.is_available())
+# ---------------- SELECT AGENT ----------------
+USE_SAFETY = False
+USE_ENERGY = False
+RUN_NAME = "ppo_baseline"
+
+# ---------------- INIT WANDB ----------------
+run = wandb.init(
+    project="Safe-Energy-RL",
+    name=RUN_NAME,
+    config={
+        "algorithm": "PPO",
+        "learning_rate": 3e-4,
+        "n_steps": 4096,
+        "batch_size": 256,
+        "gamma": 0.99,
+        "use_safety": USE_SAFETY,
+        "use_energy": USE_ENERGY,
+    },
+    sync_tensorboard=True,
+    monitor_gym=True,
+    save_code=True,
+)
+
+print("CUDA:", torch.cuda.is_available())
 print("GPU:", torch.cuda.get_device_name(0))
 
-# ---------------- SELECT AGENT ----------------
-# Baseline: use_safety=False, use_energy=False
-# Safe:     use_safety=True,  use_energy=False
-# Energy:   use_safety=False, use_energy=True
-# OURS:     use_safety=True,  use_energy=True
+def make_env():
+    env = SafeEnergyNavEnv(use_safety=USE_SAFETY, use_energy=USE_ENERGY)
+    return Monitor(env)
 
-env = SafeEnergyNavEnv(use_safety=True, use_energy=True)
-
-check_env(env)
+env = DummyVecEnv([make_env])
 
 model = PPO(
     "MlpPolicy",
     env,
     learning_rate=3e-4,
-    n_steps=2048,
-    batch_size=128,
+    n_steps=4096,
+    batch_size=256,
     n_epochs=10,
     gamma=0.99,
-    device="cuda",                 # 🔥 GPU ENABLED
-    verbose=1,
-    policy_kwargs=dict(net_arch=[256, 256])
+    gae_lambda=0.95,
+    clip_range=0.2,
+    ent_coef=0.01,
+    device="cuda",
+    tensorboard_log=f"runs/{run.id}",
+    policy_kwargs=dict(net_arch=[256, 256]),
+    verbose=1
 )
 
-model.learn(total_timesteps=500_000)
-model.save("ppo_ours")
+model.learn(
+    total_timesteps=1_000_000,
+    callback=WandbCallback(
+        gradient_save_freq=100,
+        model_save_path=f"models/{run.id}",
+        verbose=2,
+    )
+)
 
-env.close()
+model.save(RUN_NAME)
+run.finish()

@@ -7,7 +7,6 @@ env = SafeEnergyNavEnv(
     use_energy=False,
     render_mode="human"
 )
-
 model = PPO.load("ppo_safe.zip")
 
 obs, _ = env.reset()

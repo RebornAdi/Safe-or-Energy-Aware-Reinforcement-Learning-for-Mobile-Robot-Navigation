@@ -1,0 +1,189 @@
+_current_progress_remaining:
+    value: 1
+_custom_logger:
+    value: "False"
+_episode_num:
+    value: 0
+_last_episode_starts:
+    value: '[ True]'
+_last_obs:
+    value: '[[4.6107717  0.3505435  0.93654644 4.3902793  0.         0.        ]]'
+_last_original_obs:
+    value: None
+_logger:
+    value: <stable_baselines3.common.logger.Logger object at 0x000001A1B73FCA70>
+_n_updates:
+    value: 0
+_num_timesteps_at_start:
+    value: 0
+_stats_window_size:
+    value: 100
+_total_timesteps:
+    value: 200000
+_vec_normalize_env:
+    value: None
+_wandb:
+    value:
+        cli_version: 0.24.2
+        code_path: code/train_ppo.py
+        e:
+            m4x3kphk37iy1uu9fn2k0jzqj0p29ze6:
+                codePath: train_ppo.py
+                codePathLocal: train_ppo.py
+                cpu_count: 8
+                cpu_count_logical: 12
+                cudaVersion: "13.1"
+                disk:
+                    /:
+                        total: "510875660288"
+                        used: "438892503040"
+                email: deshmukhaditya105@gmail.com
+                executable: C:\Users\Aditya Atul Deshmukh\AppData\Local\Programs\Python\Python312\python.exe
+                git:
+                    commit: 0db38d6768c426d691a9bf7fe444d4529c566a8c
+                    remote: https://github.com/RebornAdi/Safe-or-Energy-Aware-Reinforcement-Learning-for-Mobile-Robot-Navigation.git
+                gpu: NVIDIA GeForce RTX 3050 Laptop GPU
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 2048
+                      memoryTotal: "4294967296"
+                      name: NVIDIA GeForce RTX 3050 Laptop GPU
+                      uuid: GPU-ef176bf2-15d9-6e4b-215b-c2cbd69ac157
+                host: Aditya
+                memory:
+                    total: "16831897600"
+                os: Windows-11-10.0.26200-SP0
+                program: c:\Users\Aditya Atul Deshmukh\Desktop\RLresearch\Safe-or-Energy-Aware-Reinforcement-Learning-for-Mobile-Robot-Navigation\train_ppo.py
+                python: CPython 3.12.10
+                root: C:\Users\Aditya Atul Deshmukh\Desktop\RLresearch\Safe-or-Energy-Aware-Reinforcement-Learning-for-Mobile-Robot-Navigation
+                startedAt: "2026-02-17T18:26:56.022116Z"
+                writerId: m4x3kphk37iy1uu9fn2k0jzqj0p29ze6
+        m: []
+        python_version: 3.12.10
+        t:
+            "1":
+                - 1
+                - 105
+            "2":
+                - 1
+                - 105
+            "3":
+                - 1
+                - 2
+                - 3
+                - 13
+                - 16
+                - 22
+                - 35
+            "4": 3.12.10
+            "5": 0.24.2
+            "8":
+                - 3
+            "12": 0.24.2
+            "13": windows-amd64
+action_noise:
+    value: None
+action_space:
+    value: Box(-1.0, 1.0, (2,), float32)
+algo:
+    value: PPO
+algorithm:
+    value: PPO
+batch_size:
+    value: 256
+clip_range:
+    value: FloatSchedule(ConstantSchedule(val=0.2))
+clip_range_vf:
+    value: None
+device:
+    value: cuda
+ent_coef:
+    value: 0.01
+env:
+    value: <stable_baselines3.common.vec_env.dummy_vec_env.DummyVecEnv object at 0x000001A19F600140>
+ep_info_buffer:
+    value: deque([], maxlen=100)
+ep_success_buffer:
+    value: deque([], maxlen=100)
+gae_lambda:
+    value: 0.95
+gamma:
+    value: 0.99
+learning_rate:
+    value: 0.0003
+lr_schedule:
+    value: FloatSchedule(ConstantSchedule(val=0.0003))
+max_grad_norm:
+    value: 0.5
+n_envs:
+    value: 1
+n_epochs:
+    value: 10
+n_steps:
+    value: 4096
+normalize_advantage:
+    value: "True"
+num_timesteps:
+    value: 0
+observation_space:
+    value: Box([ 0. -1. -1.  0.  0. -1.], [15.  1.  1. 15.  1.  1.], (6,), float32)
+policy:
+    value: |-
+        ActorCriticPolicy(
+          (features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (pi_features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (vf_features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (mlp_extractor): MlpExtractor(
+            (policy_net): Sequential(
+              (0): Linear(in_features=6, out_features=256, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): Tanh()
+            )
+            (value_net): Sequential(
+              (0): Linear(in_features=6, out_features=256, bias=True)
+              (1): Tanh()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): Tanh()
+            )
+          )
+          (action_net): Linear(in_features=256, out_features=2, bias=True)
+          (value_net): Linear(in_features=256, out_features=1, bias=True)
+        )
+policy_class:
+    value: <class 'stable_baselines3.common.policies.ActorCriticPolicy'>
+policy_kwargs:
+    value: '{''net_arch'': [256, 256]}'
+rollout_buffer:
+    value: <stable_baselines3.common.buffers.RolloutBuffer object at 0x000001A1A24259D0>
+rollout_buffer_class:
+    value: <class 'stable_baselines3.common.buffers.RolloutBuffer'>
+rollout_buffer_kwargs:
+    value: '{}'
+sde_sample_freq:
+    value: -1
+seed:
+    value: None
+start_time:
+    value: 1771352823346039300
+target_kl:
+    value: None
+tensorboard_log:
+    value: runs/s2ae4491
+use_energy:
+    value: true
+use_safety:
+    value: true
+use_sde:
+    value: "False"
+verbose:
+    value: 1
+vf_coef:
+    value: 0.5

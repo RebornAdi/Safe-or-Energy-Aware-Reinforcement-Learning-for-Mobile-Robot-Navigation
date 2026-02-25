@@ -1,0 +1,13 @@
+diff --git a/train_ppo.py b/train_ppo.py
+index fdba533..86bdaf1 100644
+--- a/train_ppo.py
++++ b/train_ppo.py
+@@ -56,7 +56,7 @@ model = PPO(
+ )
+ 
+ model.learn(
+-    total_timesteps=1_000_000,
++    total_timesteps=200_000,
+     callback=WandbCallback(
+         gradient_save_freq=100,
+         model_save_path=f"models/{run.id}",

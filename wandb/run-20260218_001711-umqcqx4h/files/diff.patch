@@ -1,0 +1,34 @@
+diff --git a/ppo_baseline.zip b/ppo_baseline.zip
+index 8861a33..d5c9c5f 100644
+Binary files a/ppo_baseline.zip and b/ppo_baseline.zip differ
+diff --git a/ppo_energy.zip b/ppo_energy.zip
+index 8457560..411a5bd 100644
+Binary files a/ppo_energy.zip and b/ppo_energy.zip differ
+diff --git a/ppo_ours.zip b/ppo_ours.zip
+index be2aa9e..cfd5cde 100644
+Binary files a/ppo_ours.zip and b/ppo_ours.zip differ
+diff --git a/train_ppo.py b/train_ppo.py
+index fdba533..c7e3e8d 100644
+--- a/train_ppo.py
++++ b/train_ppo.py
+@@ -7,9 +7,9 @@ from stable_baselines3.common.monitor import Monitor
+ from safe_energy_nav_env import SafeEnergyNavEnv
+ 
+ # ---------------- SELECT AGENT ----------------
+-USE_SAFETY = False
++USE_SAFETY = True
+ USE_ENERGY = False
+-RUN_NAME = "ppo_baseline"
++RUN_NAME = "ppo_safe"
+ 
+ # ---------------- INIT WANDB ----------------
+ run = wandb.init(
+@@ -56,7 +56,7 @@ model = PPO(
+ )
+ 
+ model.learn(
+-    total_timesteps=1_000_000,
++    total_timesteps=200_000,
+     callback=WandbCallback(
+         gradient_save_freq=100,
+         model_save_path=f"models/{run.id}",

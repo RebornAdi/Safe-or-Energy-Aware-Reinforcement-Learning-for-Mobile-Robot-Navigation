@@ -1,0 +1,254 @@
+diff --git a/__pycache__/safe_energy_nav_env.cpython-312.pyc b/__pycache__/safe_energy_nav_env.cpython-312.pyc
+index d419ebf..f1db54b 100644
+Binary files a/__pycache__/safe_energy_nav_env.cpython-312.pyc and b/__pycache__/safe_energy_nav_env.cpython-312.pyc differ
+diff --git a/ppo_baseline.zip b/ppo_baseline.zip
+index 8861a33..d5c9c5f 100644
+Binary files a/ppo_baseline.zip and b/ppo_baseline.zip differ
+diff --git a/ppo_energy.zip b/ppo_energy.zip
+index 8457560..411a5bd 100644
+Binary files a/ppo_energy.zip and b/ppo_energy.zip differ
+diff --git a/ppo_ours.zip b/ppo_ours.zip
+index be2aa9e..cfd5cde 100644
+Binary files a/ppo_ours.zip and b/ppo_ours.zip differ
+diff --git a/ppo_safe.zip b/ppo_safe.zip
+index 873957d..56a0583 100644
+Binary files a/ppo_safe.zip and b/ppo_safe.zip differ
+diff --git a/safe_energy_nav_env.py b/safe_energy_nav_env.py
+index 858df3d..b6c40ae 100644
+--- a/safe_energy_nav_env.py
++++ b/safe_energy_nav_env.py
+@@ -3,9 +3,14 @@ from gymnasium import spaces
+ import numpy as np
+ import matplotlib.pyplot as plt
+ 
++
+ class SafeEnergyNavEnv(gym.Env):
++
+     metadata = {"render_modes": ["human"], "render_fps": 30}
+ 
++    # =====================================================
++    # INIT
++    # =====================================================
+     def __init__(self, use_safety=True, use_energy=True, render_mode=None):
+         super().__init__()
+ 
+@@ -23,6 +28,7 @@ class SafeEnergyNavEnv(gym.Env):
+         self.safe_distance = 0.8
+         self.collision_distance = 0.3
+ 
++        # ---------------- ACTION SPACE ----------------
+         self.action_space = spaces.Box(
+             low=-1.0,
+             high=1.0,
+@@ -30,15 +36,19 @@ class SafeEnergyNavEnv(gym.Env):
+             dtype=np.float32
+         )
+ 
++        # ---------------- OBSERVATION SPACE ----------------
+         self.observation_space = spaces.Box(
+-            low=np.array([0.0, -1.0, -1.0, 0.0, 0.0, -1.0]),
+-            high=np.array([15.0, 1.0, 1.0, 15.0, 1.0, 1.0]),
++            low=np.array([0.0, -1.0, -1.0, 0.0, 0.0, -1.0], dtype=np.float32),
++            high=np.array([15.0, 1.0, 1.0, 15.0, 1.0, 1.0], dtype=np.float32),
+             dtype=np.float32
+         )
+ 
+         self.fig = None
+         self.ax = None
+ 
++    # =====================================================
++    # RESET
++    # =====================================================
+     def reset(self, seed=None, options=None):
+         super().reset(seed=seed)
+ 
+@@ -63,16 +73,27 @@ class SafeEnergyNavEnv(gym.Env):
+         return self._get_obs(), {}
+ 
+     def _random_pos(self):
+-        return self.np_random.uniform(1.0, self.world_size - 1.0, size=(2,)).astype(np.float32)
++        return self.np_random.uniform(
++            1.0, self.world_size - 1.0, size=(2,)
++        ).astype(np.float32)
+ 
++    # =====================================================
++    # STEP
++    # =====================================================
+     def step(self, action):
++
+         self.steps += 1
+ 
++        # --- safety clip (numerical robustness) ---
++        action = np.clip(action, -1.0, 1.0)
++
++        # map actions
+         self.v = ((action[0] + 1.0) / 2.0) * self.max_v
+         self.omega = action[1] * self.max_omega
+ 
+         prev_position = self.position.copy()
+ 
++        # robot motion
+         self.heading += self.omega * self.dt
+         self.heading = (self.heading + np.pi) % (2*np.pi) - np.pi
+ 
+@@ -82,49 +103,57 @@ class SafeEnergyNavEnv(gym.Env):
+         self.position += np.array([dx, dy])
+         self.position = np.clip(self.position, 0, self.world_size)
+ 
++        # distances
+         dist_goal = np.linalg.norm(self.goal - self.position)
+         prev_dist_goal = np.linalg.norm(self.goal - prev_position)
+         dist_obs = np.linalg.norm(self.obstacle - self.position)
+ 
+         reward = 0.0
+ 
+-        # Progress shaping
++        # ---------------- PROGRESS ----------------
+         reward += 5.0 * (prev_dist_goal - dist_goal)
+ 
+-        # Small time penalty
++        # time penalty
+         reward -= 0.01
+ 
+-        # Safety penalty
++        # ---------------- SAFETY ----------------
+         if self.use_safety:
+             if dist_obs < self.collision_distance:
+                 reward -= 100.0
+             elif dist_obs < self.safe_distance:
+                 penalty_factor = (
+-                    (self.safe_distance - dist_obs) /
+-                    (self.safe_distance - self.collision_distance)
++                    (self.safe_distance - dist_obs)
++                    / (self.safe_distance - self.collision_distance)
+                 )
+                 reward -= 10.0 * penalty_factor
+ 
+-        # Energy penalty
++        # ---------------- ENERGY ----------------
+         if self.use_energy:
+             reward -= 0.02 * (self.v**2 + 0.3 * self.omega**2)
+ 
+         terminated = False
+         truncated = False
+ 
++        # goal reached
+         if dist_goal < 0.3:
+             reward += 200.0
+             terminated = True
+ 
++        # collision
+         if dist_obs < self.collision_distance:
+             terminated = True
+ 
++        # timeout
+         if self.steps >= self.max_steps:
+             truncated = True
+ 
+         return self._get_obs(), float(reward), terminated, truncated, {}
+ 
++    # =====================================================
++    # OBSERVATION
++    # =====================================================
+     def _get_obs(self):
++
+         vec_goal = self.goal - self.position
+         heading_goal = np.arctan2(vec_goal[1], vec_goal[0])
+ 
+@@ -139,7 +168,10 @@ class SafeEnergyNavEnv(gym.Env):
+             self.v,
+             self.omega
+         ], dtype=np.float32)
+-    # ================= RENDER =================
++
++    # =====================================================
++    # RENDER
++    # =====================================================
+     def render(self):
+ 
+         if self.render_mode != "human":
+@@ -147,7 +179,7 @@ class SafeEnergyNavEnv(gym.Env):
+ 
+         if self.fig is None:
+             plt.ion()
+-            self.fig, self.ax = plt.subplots(figsize=(6,6))
++            self.fig, self.ax = plt.subplots(figsize=(6, 6))
+ 
+         self.ax.clear()
+         self.ax.set_xlim(0, self.world_size)
+@@ -159,7 +191,7 @@ class SafeEnergyNavEnv(gym.Env):
+         hx = self.position[0] + 0.5*np.cos(self.heading)
+         hy = self.position[1] + 0.5*np.sin(self.heading)
+         self.ax.plot([self.position[0], hx],
+-                    [self.position[1], hy], "b-")
++                     [self.position[1], hy], "b-")
+ 
+         # goal
+         self.ax.plot(self.goal[0], self.goal[1], "g*", markersize=15)
+@@ -171,15 +203,15 @@ class SafeEnergyNavEnv(gym.Env):
+         safe = plt.Circle(
+             self.obstacle,
+             self.safe_distance,
+-            color="r",
+             linestyle="--",
+-            fill=False
++            fill=False,
++            color="r"
+         )
+         self.ax.add_patch(safe)
+ 
+         self.ax.set_title(f"Steps: {self.steps}")
+-
+         plt.pause(0.001)
++
+     def close(self):
+         if self.fig:
+-            plt.close(self.fig)
++            plt.close(self.fig)
+\ No newline at end of file
+diff --git a/train_ppo.py b/train_ppo.py
+index fdba533..ba5c207 100644
+--- a/train_ppo.py
++++ b/train_ppo.py
+@@ -7,9 +7,9 @@ from stable_baselines3.common.monitor import Monitor
+ from safe_energy_nav_env import SafeEnergyNavEnv
+ 
+ # ---------------- SELECT AGENT ----------------
+-USE_SAFETY = False
+-USE_ENERGY = False
+-RUN_NAME = "ppo_baseline"
++USE_SAFETY = True
++USE_ENERGY = True
++RUN_NAME = "ppo_ours"
+ 
+ # ---------------- INIT WANDB ----------------
+ run = wandb.init(
+@@ -37,7 +37,6 @@ def make_env():
+     return Monitor(env)
+ 
+ env = DummyVecEnv([make_env])
+-
+ model = PPO(
+     "MlpPolicy",
+     env,
+@@ -56,7 +55,7 @@ model = PPO(
+ )
+ 
+ model.learn(
+-    total_timesteps=1_000_000,
++    total_timesteps=200_000,
+     callback=WandbCallback(
+         gradient_save_freq=100,
+         model_save_path=f"models/{run.id}",
+diff --git a/visualise_policy.py b/visualise_policy.py
+index 135cd19..1f096cf 100644
+--- a/visualise_policy.py
++++ b/visualise_policy.py
+@@ -7,7 +7,6 @@ env = SafeEnergyNavEnv(
+     use_energy=False,
+     render_mode="human"
+ )
+-
+ model = PPO.load("ppo_safe.zip")
+ 
+ obs, _ = env.reset()
